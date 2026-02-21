@@ -74,7 +74,7 @@ export default async function handler(req, res) {
     });
 
     await transporter.sendMail({
-      from: `"Tracking Thais" <${process.env.EMAIL_USER}>`,
+      from: `"Tracking Lais" <${process.env.EMAIL_USER}>`,
       to: process.env.EMAIL_USER,
       subject: `Venda Confirmada: ${nomeProduto} ($${valorComissao})`,
       text: reportHTML.replace(/<[^>]*>/g, '')
