@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "nodemailer": "^6.9.0",
+    "googleapis": "^126.0.0"
+  }
+}
