@@ -54,12 +54,12 @@ export default async function handler(req, res) {
   }
 
   // --- NOTIFICAÇÕES ---
-  const reportHTML = `<b>Nova venda na ${platform || 'MediaScalers'}! $${valorComissao} USD</b>\n\n` +
-                     `produto: ${nomeProduto}\n` +
-                     `pedido: ${order || 'N/A'}\n\n` +
-                     `data: ${dataFormatada}\n\n` +
-                     `subid2 (Gclid): ${subid2 || 'N/A'}\n` +
-                     `subid3 (Campanha): ${subid3 || 'N/A'}`;
+  const reportHTML = `<b>Nova venda na ${platform || 'MediaScalers'}! </b>\n` +
+                     `Comissão: $ ${valorComissao} USD</b>\n\n` +
+                     `Produto: ${subid1}\n` +
+                     `Data: ${dataFormatada}\n\n` +
+                     `Gclid: ${subid2 || 'N/A'}\n` +
+                     `Campanha: ${subid3 || 'N/A'}`;
 
   try {
     await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_TOKEN}/sendMessage`, {
