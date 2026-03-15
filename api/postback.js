@@ -1,23 +1,23 @@
 import { google } from 'googleapis';
 
 export default async function handler(req, res) {
-  // Pegamos os parâmetros (adicionei 'commission' e 'value' como alternativas ao payout)
   const { status, platform, payout, commission, value, product, subid1, subid2, subid3 } = req.query;
 
   // 1. Verificação de Status
-  const statusSucesso = ['approved', 'complete', 'confirmed', 'sale', 'success', 'payout'];
+  const statusSucesso = ['approved', 'complete', 'confirmed', 'sale', 'success', 'payout', 'ordered'];
   if (status && !statusSucesso.includes(status.toLowerCase())) {
     return res.status(200).send(`Status ${status} ignorado.`);
   }
 
-  // 2. Ajuste do Valor da Comissão (Detecta em vários campos possíveis)
-  const valorRaw = payout || commission || value || "0";
-  const valorNumerico = parseFloat(valorRaw.replace(',', '.'));
+  // 2. Ajuste do Valor da Comissão (CORRIGIDO)
+  let valorRaw = payout || commission || value || "0";
   
-  // Se você quer remover os centavos mas evitar o "zero", usamos o valor real se for < 1
-  const valorComissao = valorNumerico > 0 && valorNumerico < 1 
-    ? valorNumerico.toFixed(2) 
-    : Math.floor(valorNumerico).toString();
+  // Limpeza: remove espaços e garante que use ponto para decimais
+  let valorLimpo = valorRaw.toString().replace(/\s/g, '').replace(',', '.');
+  let valorNumerico = parseFloat(valorLimpo) || 0;
+  
+  // Mantemos 2 casas decimais (ex: 15.90) para o dashboard ficar correto
+  const valorComissao = valorNumerico.toFixed(2);
 
   const agora = new Date();
   const brasiliaTime = new Date(agora.getTime() - (3 * 60 * 60 * 1000));
@@ -39,7 +39,7 @@ export default async function handler(req, res) {
         subid2 || 'N/A',      // Gclid
         'Compra',             // Conversion
         dataFormatada,        // Time
-        valorComissao,        // Valor
+        valorComissao,        // Valor (Agora com centavos corretos)
         'USD',                // Currency
         nomeProduto           // Produto
       ]];
@@ -58,8 +58,7 @@ export default async function handler(req, res) {
     planilhaStatus = "Erro: " + error.message;
   }
 
-  // 4. Notificação Telegram (HTML Corrigido)
-  // Removi as tags malformadas que faziam o Telegram ignorar a mensagem
+  // 4. Notificação Telegram
   const reportHTML = `<b>Nova venda na ${platform || 'Plataforma'}!</b>\n\n` +
                      `<b>Comissão:</b> $ ${valorComissao} USD\n` +
                      `<b>Produto:</b> ${nomeProduto}\n` +
@@ -78,15 +77,8 @@ export default async function handler(req, res) {
       })
     });
 
-    const telegramData = await telegramRes.json();
-    
-    if (!telegramData.ok) {
-        throw new Error(`Erro Telegram: ${telegramData.description}`);
-    }
-        
-    res.status(200).json({ status: "OK", planilha: planilhaStatus, telegram: "Enviado" });
+    res.status(200).json({ status: "OK", valor_recebido: valorRaw, valor_processado: valorComissao });
   } catch (error) {
-    console.error("Erro Notificação:", error.message);
-    res.status(200).json({ status: "Erro parcial", erro: error.message, planilha: planilhaStatus });
+    res.status(200).json({ status: "Erro", erro: error.message });
   }
 }
