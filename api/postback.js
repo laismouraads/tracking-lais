@@ -9,21 +9,20 @@ export default async function handler(req, res) {
     return res.status(200).send(`Status ${status} ignorado.`);
   }
 
-  // 2. Ajuste do Valor da Comissão (CORRIGIDO)
+  // 2. Ajuste do Valor da Comissão (Transforma 44.00 em 44)
   let valorRaw = payout || commission || value || "0";
-  
-  // Limpeza: remove espaços e garante que use ponto para decimais
   let valorLimpo = valorRaw.toString().replace(/\s/g, '').replace(',', '.');
   let valorNumerico = parseFloat(valorLimpo) || 0;
   
-  // Mantemos 2 casas decimais (ex: 15.90) para o dashboard ficar correto
-  const valorComissao = valorNumerico.toFixed(2);
+  // Math.floor remove os centavos sem dividir o valor. Ex: 44.90 vira 44.
+  const valorComissaoFinal = Math.floor(valorNumerico).toString();
 
   const agora = new Date();
   const brasiliaTime = new Date(agora.getTime() - (3 * 60 * 60 * 1000));
   const dataFormatada = brasiliaTime.toISOString().replace('T', ' ').split('.')[0] + "-0300";
   
-  const nomeProduto = subid1 || product || "Produto N/A";
+  // Prioridade para capturar o nome do produto
+  const nomeProduto = product || subid1 || "Produto N/A";
 
   // 3. Salvar na Planilha Google
   let planilhaStatus = "Não configurada";
@@ -36,12 +35,12 @@ export default async function handler(req, res) {
       const sheets = google.sheets({ version: 'v4', auth });
       
       const values = [[
-        subid2 || 'N/A',      // Gclid
-        'Compra',             // Conversion
-        dataFormatada,        // Time
-        valorComissao,        // Valor (Agora com centavos corretos)
-        'USD',                // Currency
-        nomeProduto           // Produto
+        subid2 || 'N/A',      // Coluna A: Gclid
+        'Compra',             // Coluna B: Conversion
+        dataFormatada,        // Coluna C: Time
+        valorComissaoFinal,   // Coluna D: Conversion Value (Agora envia 44)
+        'USD',                // Coluna E: Currency
+        nomeProduto           // Coluna F: Nome do Produto
       ]];
 
       await sheets.spreadsheets.values.append({
@@ -60,14 +59,14 @@ export default async function handler(req, res) {
 
   // 4. Notificação Telegram
   const reportHTML = `<b>Nova venda na ${platform || 'Plataforma'}!</b>\n\n` +
-                     `<b>Comissão:</b> $ ${valorComissao} USD\n` +
+                     `<b>Comissão:</b> $ ${valorComissaoFinal} USD\n` +
                      `<b>Produto:</b> ${nomeProduto}\n` +
                      `<b>Data:</b> ${dataFormatada}\n\n` +
                      `<b>Gclid:</b> <code>${subid2 || 'N/A'}</code>\n` +
                      `<b>Campanha:</b> ${subid3 || 'N/A'}`;
 
   try {
-    const telegramRes = await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_TOKEN}/sendMessage`, {
+    await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_TOKEN}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
@@ -77,7 +76,7 @@ export default async function handler(req, res) {
       })
     });
 
-    res.status(200).json({ status: "OK", valor_recebido: valorRaw, valor_processado: valorComissao });
+    res.status(200).json({ status: "OK", valor: valorComissaoFinal, produto: nomeProduto });
   } catch (error) {
     res.status(200).json({ status: "Erro", erro: error.message });
   }
