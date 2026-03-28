@@ -38,14 +38,15 @@ export default async function handler(req, res) {
         subid2 || 'N/A',      // Coluna A: Gclid
         'Compra',             // Coluna B: Conversion
         dataFormatada,        // Coluna C: Time
-        valorComissaoFinal,   // Coluna D: Conversion Value (Agora envia 44)
+        valorComissaoFinal,   // Coluna D: Conversion Value
         'USD',                // Coluna E: Currency
-        nomeProduto           // Coluna F: Nome do Produto
+        nomeProduto,          // Coluna F: Nome do Produto
+        subid3 || 'N/A'       // Coluna G: Número da Campanha <--- ADICIONADO AQUI
       ]];
 
       await sheets.spreadsheets.values.append({
         spreadsheetId: process.env.GOOGLE_SHEET_ID,
-        range: 'Página1!A:F', 
+        range: 'Página1!A:G', // <--- ALTERADO DE A:F PARA A:G
         valueInputOption: 'USER_ENTERED',
         insertDataOption: 'INSERT_ROWS',
         requestBody: { values },
